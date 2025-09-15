@@ -6,7 +6,7 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen text-white">
       {/* Navigation */}
-      <nav className="container mx-auto px-6 py-8">
+      {/* <nav className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
@@ -20,8 +20,9 @@ const LandingPage = () => {
           >
             Launch App
           </Link>
+          <ConnectButton showBalance={true} />
         </div>
-      </nav>
+      </nav> */}
 
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-20 text-center">

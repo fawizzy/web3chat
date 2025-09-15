@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, ArrowLeft } from 'lucide-react';
 import FriendsList from '../components/FriendsList';
 import ChatArea from '../components/ChatArea';
+import { useAccount } from 'wagmi';
 
 export interface Friend {
   id: string;
@@ -23,6 +24,7 @@ export interface Message {
 
 const ChatApp = () => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const {address} = useAccount()
 
   const mockFriends: Friend[] = [
     {
@@ -68,6 +70,20 @@ const ChatApp = () => {
       unreadCount: 1
     }
   ];
+
+
+  useEffect(() => {
+    // You can add logic here to handle wallet connection, e.g., show a notification or redirect
+    // But do not return JSX from useEffect
+  }, [address]);
+
+  if (!address) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-white">
+        <span>Please connect your wallet to use the chat.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-white">
