@@ -4,6 +4,7 @@ import { Friend, Message } from '../pages/ChatApp';
 import { usePublicClient, useWalletClient } from 'wagmi';
 import { CHAT_ABI } from '../config/abi';
 import { toast } from 'sonner';
+import { parseAbiItem } from 'viem';
 
 interface ChatAreaProps {
   selectedFriend: Friend | null;
@@ -25,6 +26,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
   }, [messages]);
 
   useEffect(() => {
+
+    if (!selectedFriend || !publicClient) return
     const fetchMessages = async () => {
       if (selectedFriend && publicClient) {
         const messages = await publicClient.readContract({
@@ -37,6 +40,34 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
       }
     };
     fetchMessages();
+
+    const onLogs = (logs: any[]) => {
+      // Only update if the message is between the current user and selected friend
+      const relevantLogs = logs.filter(
+      (log) =>
+        (log.args.from === data?.account.address && log.args.to === selectedFriend.user) ||
+        (log.args.from === selectedFriend.user && log.args.to === data?.account.address)
+      );
+      if (relevantLogs.length > 0) {
+      // Fetch messages again to update the chat
+      publicClient.readContract({
+        abi: CHAT_ABI,
+        functionName: "getMessages",
+        address: import.meta.env.VITE_CHAT_CONTRACT,
+        args: [data?.account.address, selectedFriend.user]
+      }).then((msgs) => setMessages(msgs as Message[]));
+      }
+    };
+
+    const unwatch = publicClient.watchEvent({
+      address: import.meta.env.VITE_CHAT_CONTRACT,
+      event: parseAbiItem("event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"),
+      onLogs
+    });
+
+    return () => {
+      unwatch();
+    };
   }, [selectedFriend, publicClient, data?.account.address]);
 
   const handleSendMessage = async () => {
