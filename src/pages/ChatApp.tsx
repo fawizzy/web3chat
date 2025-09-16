@@ -1,81 +1,53 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, ArrowLeft } from 'lucide-react';
 import FriendsList from '../components/FriendsList';
 import ChatArea from '../components/ChatArea';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
+import { parseAbiItem } from 'viem';
 
 export interface Friend {
-  id: string;
+  user: string;
   name: string;
-  avatar: string;
-  lastMessage: string;
-  lastMessageTime: string;
-  online: boolean;
-  unreadCount?: number;
+  uri: string;
 }
 
 export interface Message {
-  id: string;
   text: string;
-  sender: 'me' | 'friend';
+  sender: string;
   timestamp: string;
 }
 
 const ChatApp = () => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const {address} = useAccount()
-
-  const mockFriends: Friend[] = [
-    {
-      id: '1',
-      name: 'Alice Johnson',
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150',
-      lastMessage: 'Hey! How are you doing?',
-      lastMessageTime: '2m ago',
-      online: true,
-      unreadCount: 2
-    },
-    {
-      id: '2',
-      name: 'Bob Smith',
-      avatar: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150',
-      lastMessage: 'See you tomorrow!',
-      lastMessageTime: '15m ago',
-      online: true
-    },
-    {
-      id: '3',
-      name: 'Carol Davis',
-      avatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=150',
-      lastMessage: 'Thanks for the help 😊',
-      lastMessageTime: '1h ago',
-      online: false
-    },
-    {
-      id: '4',
-      name: 'David Wilson',
-      avatar: 'https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=150',
-      lastMessage: 'The meeting went great!',
-      lastMessageTime: '3h ago',
-      online: false
-    },
-    {
-      id: '5',
-      name: 'Emma Brown',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
-      lastMessage: 'Let me know when you\'re free',
-      lastMessageTime: '1d ago',
-      online: true,
-      unreadCount: 1
-    }
-  ];
-
+  const publicClient = usePublicClient();
+  const [friends, setFriends] = useState<Friend[]>([])
 
   useEffect(() => {
-    // You can add logic here to handle wallet connection, e.g., show a notification or redirect
-    // But do not return JSX from useEffect
-  }, [address]);
+    if (!publicClient) return
+
+    console.log()
+
+    const getUsers = async () =>{
+      const users =  await publicClient.getLogs({
+        address: import.meta.env.VITE_CHAT_CONTRACT,
+        event: parseAbiItem("event UserRegistered(address indexed user, string name, string uri)"),
+        fromBlock: 0n,
+        toBlock: "latest"     
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const formattedUsers = users.map((log: any) => ({
+        user: log.args.user,
+        name: log.args.name,
+        uri: log.args.uri,
+      }));
+      setFriends(formattedUsers);
+    }
+
+    getUsers()
+  }, [address, publicClient]);
+
 
   if (!address) {
     return (
@@ -113,7 +85,7 @@ const ChatApp = () => {
         {/* Friends List Sidebar */}
         <div className="w-80 border-r border-white/10 bg-black/10 backdrop-blur-sm">
           <FriendsList
-            friends={mockFriends}
+            friends={friends}
             selectedFriend={selectedFriend}
             onSelectFriend={setSelectedFriend}
           />

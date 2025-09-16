@@ -1,6 +1,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { MessageCircle } from "lucide-react";
 import React, { ReactNode } from "react";
+import { Toaster } from "./ui/sonner";
 interface LayoutProps {
     children: ReactNode;
 }
@@ -30,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => (
         <footer style={{ padding: "1rem", borderTop: "1px solid #eee", textAlign: "center" }}>
             &copy; {new Date().getFullYear()} Web3Chat
         </footer>
+         
     </div>
 );
 

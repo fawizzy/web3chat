@@ -15,6 +15,8 @@ const FriendsList: React.FC<FriendsListProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
+  console.log("friends: ",friends)
+
   const filteredFriends = useMemo(() => {
     if (!searchQuery.trim()) return friends;
     
@@ -50,40 +52,31 @@ const FriendsList: React.FC<FriendsListProps> = ({
         <div className="space-y-1 px-2">
           {filteredFriends.map((friend) => (
             <div
-              key={friend.id}
+              key={friend.uri}
               onClick={() => onSelectFriend(friend)}
               className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-white/10 ${
-                selectedFriend?.id === friend.id
+                selectedFriend?.uri === friend.uri
                   ? 'bg-purple-600/20 border border-purple-500/30'
                   : ''
               }`}
             >
               <div className="relative">
                 <img
-                  src={friend.avatar}
+                  src={"https://ipfs.io/ipfs/" + friend.uri}
                   alt={friend.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />
-                {friend.online && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-gray-900"></div>
-                )}
+                
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <h4 className="font-medium text-white truncate">{friend.name}</h4>
-                  <span className="text-xs text-gray-400 flex-shrink-0">
-                    {friend.lastMessageTime}
-                  </span>
+                  
                 </div>
-                <p className="text-sm text-gray-400 truncate">{friend.lastMessage}</p>
               </div>
 
-              {friend.unreadCount && (
-                <div className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                  {friend.unreadCount}
-                </div>
-              )}
+            
             </div>
           ))}
         </div>

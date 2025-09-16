@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import ChatApp from './pages/ChatApp';
 import Layout from './components/Layout';
+import RegistrationForm from './pages/Registration';
+import { Toaster } from './components/ui/sonner';
 
 
 function App() {
@@ -14,7 +16,9 @@ function App() {
           <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/chat" element={<ChatApp />} />
+          <Route path="/registration" element={<RegistrationForm />} />
         </Routes>
+        <Toaster />
         </Layout>
       </div>
     </Router>

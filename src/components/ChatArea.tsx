@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Smile, Paperclip, MoreVertical } from 'lucide-react';
 import { Friend, Message } from '../pages/ChatApp';
+import { usePublicClient, useWalletClient } from 'wagmi';
+import { CHAT_ABI } from '../config/abi';
+import { toast } from 'sonner';
 
 interface ChatAreaProps {
   selectedFriend: Friend | null;
@@ -10,6 +13,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const {data} = useWalletClient();
+  const publicClient = usePublicClient();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -20,45 +25,39 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
   }, [messages]);
 
   useEffect(() => {
-    if (selectedFriend) {
-      // Mock messages for the selected friend
-      const mockMessages: Message[] = [
-        {
-          id: '1',
-          text: 'Hey there! How are you doing today?',
-          sender: 'friend',
-          timestamp: '10:30 AM'
-        },
-        {
-          id: '2',
-          text: 'I\'m doing great! Just finished a big project. How about you?',
-          sender: 'me',
-          timestamp: '10:32 AM'
-        },
-        {
-          id: '3',
-          text: 'That\'s awesome! I\'d love to hear more about it. Maybe we can catch up over coffee sometime?',
-          sender: 'friend',
-          timestamp: '10:35 AM'
-        },
-        {
-          id: '4',
-          text: 'Definitely! I\'m free this weekend. What works for you?',
-          sender: 'me',
-          timestamp: '10:37 AM'
-        }
-      ];
-      setMessages(mockMessages);
-    }
-  }, [selectedFriend]);
+    const fetchMessages = async () => {
+      if (selectedFriend && publicClient) {
+        const messages = await publicClient.readContract({
+          abi: CHAT_ABI,
+          functionName: "getMessages",
+          address: import.meta.env.VITE_CHAT_CONTRACT,
+          args: [data?.account.address, selectedFriend.user]
+        });
+        setMessages(messages as Message[]);
+      }
+    };
+    fetchMessages();
+  }, [selectedFriend, publicClient, data?.account.address]);
 
-  const handleSendMessage = () => {
-    if (!message.trim() || !selectedFriend) return;
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedFriend || !data) return;
+
+    try {
+      await data.writeContract({
+      abi: CHAT_ABI,
+      address: import.meta.env.VITE_CHAT_CONTRACT,
+      functionName: "sendMessage",
+      args: [selectedFriend.user, message]
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    }
+
 
     const newMessage: Message = {
-      id: Date.now().toString(),
       text: message,
-      sender: 'me',
+      sender: data.account.address,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -87,6 +86,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     );
   }
 
+  console.log(messages)
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Chat Header */}
@@ -95,19 +96,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
           <div className="flex items-center space-x-3">
             <div className="relative">
               <img
-                src={selectedFriend.avatar}
+                src={"https://ipfs.io/ipfs/"+selectedFriend.uri}
                 alt={selectedFriend.name}
                 className="w-10 h-10 rounded-full object-cover"
               />
-              {selectedFriend.online && (
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
-              )}
+              
             </div>
             <div>
               <h3 className="font-semibold text-white">{selectedFriend.name}</h3>
-              <p className="text-sm text-gray-400">
-                {selectedFriend.online ? 'Online' : 'Offline'}
-              </p>
+              
             </div>
           </div>
           <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
@@ -118,23 +115,23 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <div
-            key={msg.id}
-            className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
+            key={index}
+            className={`flex ${msg.sender === data?.account.address ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-              msg.sender === 'me' ? 'flex-row-reverse space-x-reverse' : ''
+              msg.sender === data?.account.address ? 'flex-row-reverse space-x-reverse' : ''
             }`}>
-              {msg.sender === 'friend' && (
+              {msg.sender === selectedFriend.user && (
                 <img
-                  src={selectedFriend.avatar}
+                  src={"https://ipfs.io/ipfs/"+selectedFriend.uri}
                   alt={selectedFriend.name}
                   className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                 />
               )}
               <div className={`px-4 py-2 rounded-2xl ${
-                msg.sender === 'me'
+                msg.sender === data?.account.address
                   ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
                   : 'bg-white/10 text-white'
               }`}>
@@ -142,9 +139,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
               </div>
             </div>
             <div className={`text-xs text-gray-400 mt-1 ${
-              msg.sender === 'me' ? 'text-right mr-2' : 'text-left ml-2'
+              msg.sender === data?.account.address ? 'text-right mr-2' : 'text-left ml-2'
             }`}>
-              {msg.timestamp}
+              {new Date(Number(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
         ))}

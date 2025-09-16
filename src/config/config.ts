@@ -1,15 +1,13 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { http } from 'viem';
 import {
-  mainnet,
-  polygon,
-  optimism,
-  arbitrum,
-  base,
+  liskSepolia
 } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'My RainbowKit App',
   projectId: 'YOUR_PROJECT_ID',
-  chains: [mainnet, polygon, optimism, arbitrum, base],
-  ssr: true, // If your dApp uses server side rendering (SSR)
+  chains: [liskSepolia],
+  transports: {[liskSepolia.id]: http("https://rpc.sepolia-api.lisk.com")},
+  ssr: true, 
 });

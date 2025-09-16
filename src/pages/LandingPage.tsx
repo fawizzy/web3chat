@@ -1,28 +1,41 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { MessageCircle, Shield, Zap, Users, ArrowRight, Sparkles } from 'lucide-react';
+import { usePublicClient, useWalletClient } from 'wagmi';
+import { CHAT_ABI } from '../config/abi';
+// import { usePublicClient, useWalletClient } from 'wagmi';
+// import { CHAT_ABI } from '../config/abi';
+
+
 
 const LandingPage = () => {
+  const [isUser, setIsUser] = useState(false)
+  const publicClient = usePublicClient();
+  const {data} = useWalletClient();
+  const navigate = useNavigate()
+
+  useEffect(()=>{
+      if (!data) return
+      if (!publicClient) return
+  
+      const getUser = async ()=>{
+        const user = await publicClient.readContract({
+          abi: CHAT_ABI,
+          address: import.meta.env.VITE_CHAT_CONTRACT,
+          functionName: "users",
+          args: [data.account.address]
+        }) as [string, string, boolean]; 
+        console.log(user[2])
+        setIsUser(user[2])
+      }
+  
+      getUser();
+    },[data, navigate, publicClient])
+
+
   return (
     <div className="min-h-screen text-white">
-      {/* Navigation */}
-      {/* <nav className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-              <MessageCircle className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold">Web3Chat</span>
-          </div>
-          <Link
-            to="/chat"
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6 py-2 rounded-full font-medium transition-all duration-200 transform hover:scale-105"
-          >
-            Launch App
-          </Link>
-          <ConnectButton showBalance={true} />
-        </div>
-      </nav> */}
+     
 
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-20 text-center">
@@ -44,7 +57,7 @@ const LandingPage = () => {
           
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
             <Link
-              to="/chat"
+              to={isUser? "/chat":"/registration"}
               className="group bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-4 rounded-full font-semibold text-lg transition-all duration-200 transform hover:scale-105 flex items-center space-x-2"
             >
               <span>Start Chatting</span>
