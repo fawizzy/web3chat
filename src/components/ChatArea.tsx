@@ -1,24 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Smile, Paperclip, MoreVertical } from 'lucide-react';
-import { Friend, Message } from '../pages/ChatApp';
-import { usePublicClient, useWalletClient } from 'wagmi';
-import { CHAT_ABI } from '../config/abi';
-import { toast } from 'sonner';
-import { parseAbiItem } from 'viem';
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Smile, Paperclip, MoreVertical } from "lucide-react";
+import { Friend, Message } from "../pages/ChatApp";
+import { usePublicClient, useWalletClient } from "wagmi";
+import { CHAT_ABI } from "../config/abi";
+import { toast } from "sonner";
+import { parseAbiItem } from "viem";
+import { useGetMessages } from "../hooks/useGetMessages";
 
 interface ChatAreaProps {
   selectedFriend: Friend | null;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const {data} = useWalletClient();
+  const { data } = useWalletClient();
   const publicClient = usePublicClient();
+  const {getMessages} = useGetMessages()
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -26,78 +28,102 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
   }, [messages]);
 
   useEffect(() => {
-
-    if (!selectedFriend || !publicClient) return
+    if (!selectedFriend || !publicClient) return;
     const fetchMessages = async () => {
       if (selectedFriend && publicClient) {
-        const messages = await publicClient.readContract({
-          abi: CHAT_ABI,
-          functionName: "getMessages",
-          address: import.meta.env.VITE_CHAT_CONTRACT,
-          args: [data?.account.address, selectedFriend.user]
-        });
-        setMessages(messages as Message[]);
+        const msgs = await getMessages(data?.account.address as `0x${string}`, selectedFriend.user);
+        console.log("msg: ", msgs)
+        setMessages(msgs as Message[]);
       }
     };
     fetchMessages();
 
-    const onLogs = (logs: any[]) => {
-      // Only update if the message is between the current user and selected friend
-      const relevantLogs = logs.filter(
-      (log) =>
-        (log.args.from === data?.account.address && log.args.to === selectedFriend.user) ||
-        (log.args.from === selectedFriend.user && log.args.to === data?.account.address)
-      );
-      if (relevantLogs.length > 0) {
-      // Fetch messages again to update the chat
-      publicClient.readContract({
-        abi: CHAT_ABI,
-        functionName: "getMessages",
-        address: import.meta.env.VITE_CHAT_CONTRACT,
-        args: [data?.account.address, selectedFriend.user]
-      }).then((msgs) => setMessages(msgs as Message[]));
-      }
-    };
+    // const onLogs = (logs: any[]) => {
+    //   // Only update if the message is between the current user and selected friend
+    //   console.log("cheking events");
+    //   const relevantLogs = logs.filter(
+    //     (log) =>
+    //       (log.args.from === data?.account.address &&
+    //         log.args.to === selectedFriend.user) ||
+    //       (log.args.from === selectedFriend.user &&
+    //         log.args.to === data?.account.address)
+    //   );
 
+    //   console.log("relevantLogs: ", relevantLogs);
+    //   if (relevantLogs.length > 0) {
+    //     // Fetch messages again to update the chat
+    //     publicClient
+    //       .readContract({
+    //         abi: CHAT_ABI,
+    //         functionName: "getMessages",
+    //         address: import.meta.env.VITE_CHAT_CONTRACT,
+    //         args: [data?.account.address, selectedFriend.user],
+    //       })
+    //       .then((msgs) => setMessages(msgs as Message[]));
+    //   }
+    // };
+    console.log(parseAbiItem(
+        "event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"
+      ));
     const unwatch = publicClient.watchEvent({
-      address: import.meta.env.VITE_CHAT_CONTRACT,
-      event: parseAbiItem("event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"),
-      onLogs
+      // address: import.meta.env.VITE_CHAT_CONTRACT,
+      event: parseAbiItem(
+        "event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"
+      ),
+      onLogs: () => {
+        fetchMessages();
+      },
+      // batch: false
     });
+
+    // // const unwatch =
+    // publicClient.watchContractEvent({
+    //   // address: import.meta.env.VITE_CHAT_CONTRACT,
+    //   abi: CHAT_ABI,
+    //   eventName: "MessageSent",
+
+    //   onLogs: (e) => {
+    //     console.log("....");
+    //     onLogs(e);
+    //   },
+    // });
 
     return () => {
       unwatch();
     };
-  }, [selectedFriend, publicClient, data?.account.address]);
+  }, [selectedFriend, publicClient, data?.account.address, getMessages]);
 
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedFriend || !data) return;
 
     try {
       await data.writeContract({
-      abi: CHAT_ABI,
-      address: import.meta.env.VITE_CHAT_CONTRACT,
-      functionName: "sendMessage",
-      args: [selectedFriend.user, message]
+        abi: CHAT_ABI,
+        address: import.meta.env.VITE_CHAT_CONTRACT,
+        functionName: "sendMessage",
+        args: [selectedFriend.user, message],
       });
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Failed to send message");
     }
 
-
     const newMessage: Message = {
-      text: message,
-      sender: data.account.address,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      message: message,
+      from: data.account.address,
+      to: selectedFriend.user,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
-    setMessages(prev => [...prev, newMessage]);
-    setMessage('');
+    setMessages((prev) => [...prev, newMessage]);
+    setMessage("");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -110,14 +136,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
           <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <Send className="w-12 h-12 text-white" />
           </div>
-          <h3 className="text-2xl font-semibold text-white mb-2">Select a Conversation</h3>
-          <p className="text-gray-400">Choose a friend from the sidebar to start chatting</p>
+          <h3 className="text-2xl font-semibold text-white mb-2">
+            Select a Conversation
+          </h3>
+          <p className="text-gray-400">
+            Choose a friend from the sidebar to start chatting
+          </p>
         </div>
       </div>
     );
   }
 
-  console.log(messages)
+  console.log(messages);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -127,15 +157,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
           <div className="flex items-center space-x-3">
             <div className="relative">
               <img
-                src={"https://ipfs.io/ipfs/"+selectedFriend.uri}
+                src={"https://ipfs.io/ipfs/" + selectedFriend.uri}
                 alt={selectedFriend.name}
                 className="w-10 h-10 rounded-full object-cover"
               />
-              
             </div>
             <div>
-              <h3 className="font-semibold text-white">{selectedFriend.name}</h3>
-              
+              <h3 className="font-semibold text-white">
+                {selectedFriend.name}
+              </h3>
             </div>
           </div>
           <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
@@ -149,30 +179,47 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex ${msg.sender === data?.account.address ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${
+              msg.from === data?.account.address
+                ? "justify-end"
+                : "justify-start"
+            }`}
           >
-            <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-              msg.sender === data?.account.address ? 'flex-row-reverse space-x-reverse' : ''
-            }`}>
-              {msg.sender === selectedFriend.user && (
+            <div
+              className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
+                msg.from === data?.account.address
+                  ? "flex-row-reverse space-x-reverse"
+                  : ""
+              }`}
+            >
+              {msg.from === selectedFriend.user && (
                 <img
-                  src={"https://ipfs.io/ipfs/"+selectedFriend.uri}
+                  src={"https://ipfs.io/ipfs/" + selectedFriend.uri}
                   alt={selectedFriend.name}
                   className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                 />
               )}
-              <div className={`px-4 py-2 rounded-2xl ${
-                msg.sender === data?.account.address
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                  : 'bg-white/10 text-white'
-              }`}>
-                <p className="text-sm">{msg.text}</p>
+              <div
+                className={`px-4 py-2 rounded-2xl ${
+                  msg.from === data?.account.address
+                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                    : "bg-white/10 text-white"
+                }`}
+              >
+                <p className="text-sm">{msg.message}</p>
               </div>
             </div>
-            <div className={`text-xs text-gray-400 mt-1 ${
-              msg.sender === data?.account.address ? 'text-right mr-2' : 'text-left ml-2'
-            }`}>
-              {new Date(Number(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div
+              className={`text-xs text-gray-400 mt-1 ${
+                msg.from === data?.account.address
+                  ? "text-right mr-2"
+                  : "text-left ml-2"
+              }`}
+            >
+              {new Date(Number(msg.timestamp)).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
           </div>
         ))}
@@ -203,8 +250,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
             disabled={!message.trim()}
             className={`p-3 rounded-full transition-all ${
               message.trim()
-                ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white transform hover:scale-105'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white transform hover:scale-105"
+                : "bg-gray-600 text-gray-400 cursor-not-allowed"
             }`}
           >
             <Send className="w-5 h-5" />

@@ -52,10 +52,10 @@ const FriendsList: React.FC<FriendsListProps> = ({
         <div className="space-y-1 px-2">
           {filteredFriends.map((friend) => (
             <div
-              key={friend.uri}
+              key={friend.id}
               onClick={() => onSelectFriend(friend)}
               className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-white/10 ${
-                selectedFriend?.uri === friend.uri
+                selectedFriend?.id === friend.id
                   ? 'bg-purple-600/20 border border-purple-500/30'
                   : ''
               }`}

@@ -4,18 +4,21 @@ import { MessageCircle, ArrowLeft } from 'lucide-react';
 import FriendsList from '../components/FriendsList';
 import ChatArea from '../components/ChatArea';
 import { useAccount, usePublicClient } from 'wagmi';
-import { parseAbiItem } from 'viem';
-
+// import { parseAbiItem } from 'viem';
+import { useGetFriends } from '../hooks/useGetFriends';
 export interface Friend {
+  id?: string;
   user: string;
   name: string;
   uri: string;
 }
 
 export interface Message {
-  text: string;
-  sender: string;
-  timestamp: string;
+  id?: string
+      from: string
+      to: string
+      message: string
+      timestamp: string
 }
 
 const ChatApp = () => {
@@ -23,6 +26,7 @@ const ChatApp = () => {
   const {address} = useAccount()
   const publicClient = usePublicClient();
   const [friends, setFriends] = useState<Friend[]>([])
+  const {getFriends} = useGetFriends();
 
   useEffect(() => {
     if (!publicClient) return
@@ -30,23 +34,17 @@ const ChatApp = () => {
     console.log()
 
     const getUsers = async () =>{
-      const users =  await publicClient.getLogs({
-        address: import.meta.env.VITE_CHAT_CONTRACT,
-        event: parseAbiItem("event UserRegistered(address indexed user, string name, string uri)"),
-        fromBlock: 0n,
-        toBlock: "latest"     
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const formattedUsers = users.map((log: any) => ({
-        user: log.args.user,
-        name: log.args.name,
-        uri: log.args.uri,
-      }));
-      setFriends(formattedUsers);
+
+      const friends = await getFriends()
+      console.log(friends)
+      
+      setFriends(friends);
     }
 
     getUsers()
-  }, [address, publicClient]);
+  }, [address, getFriends, publicClient]);
+
+  console.log(selectedFriend)
 
 
   if (!address) {
