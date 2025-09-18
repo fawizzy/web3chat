@@ -31,7 +31,6 @@ const ChatApp = () => {
   useEffect(() => {
     if (!publicClient) return
 
-    console.log()
 
     const getUsers = async () =>{
 
@@ -44,7 +43,6 @@ const ChatApp = () => {
     getUsers()
   }, [address, getFriends, publicClient]);
 
-  console.log(selectedFriend)
 
 
   if (!address) {

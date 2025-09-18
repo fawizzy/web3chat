@@ -38,33 +38,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     };
     fetchMessages();
 
-    // const onLogs = (logs: any[]) => {
-    //   // Only update if the message is between the current user and selected friend
-    //   console.log("cheking events");
-    //   const relevantLogs = logs.filter(
-    //     (log) =>
-    //       (log.args.from === data?.account.address &&
-    //         log.args.to === selectedFriend.user) ||
-    //       (log.args.from === selectedFriend.user &&
-    //         log.args.to === data?.account.address)
-    //   );
 
-    //   console.log("relevantLogs: ", relevantLogs);
-    //   if (relevantLogs.length > 0) {
-    //     // Fetch messages again to update the chat
-    //     publicClient
-    //       .readContract({
-    //         abi: CHAT_ABI,
-    //         functionName: "getMessages",
-    //         address: import.meta.env.VITE_CHAT_CONTRACT,
-    //         args: [data?.account.address, selectedFriend.user],
-    //       })
-    //       .then((msgs) => setMessages(msgs as Message[]));
-    //   }
-    // };
-    console.log(parseAbiItem(
-        "event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"
-      ));
     const unwatch = publicClient.watchEvent({
       // address: import.meta.env.VITE_CHAT_CONTRACT,
       event: parseAbiItem(
@@ -76,17 +50,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
       // batch: false
     });
 
-    // // const unwatch =
-    // publicClient.watchContractEvent({
-    //   // address: import.meta.env.VITE_CHAT_CONTRACT,
-    //   abi: CHAT_ABI,
-    //   eventName: "MessageSent",
-
-    //   onLogs: (e) => {
-    //     console.log("....");
-    //     onLogs(e);
-    //   },
-    // });
 
     return () => {
       unwatch();
@@ -147,7 +110,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     );
   }
 
-  console.log(messages);
+  console.log(data?.account.address)
+
 
   return (
     <div className="flex-1 flex flex-col">
@@ -180,19 +144,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
           <div
             key={index}
             className={`flex ${
-              msg.from === data?.account.address
+               msg.from.toLowerCase() === data?.account.address.toLowerCase()
                 ? "justify-end"
                 : "justify-start"
             }`}
           >
             <div
               className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-                msg.from === data?.account.address
+                 msg.from.toLowerCase() === data?.account.address.toLowerCase()
                   ? "flex-row-reverse space-x-reverse"
                   : ""
               }`}
             >
-              {msg.from === selectedFriend.user && (
+              {msg.from.toLowerCase() === selectedFriend.user.toLowerCase() && (
                 <img
                   src={"https://ipfs.io/ipfs/" + selectedFriend.uri}
                   alt={selectedFriend.name}
@@ -201,7 +165,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
               )}
               <div
                 className={`px-4 py-2 rounded-2xl ${
-                  msg.from === data?.account.address
+                  msg.from.toLowerCase() === data?.account.address.toLowerCase()
                     ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                     : "bg-white/10 text-white"
                 }`}
@@ -211,7 +175,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
             </div>
             <div
               className={`text-xs text-gray-400 mt-1 ${
-                msg.from === data?.account.address
+                msg.from.toLowerCase() === data?.account.address.toLowerCase()
                   ? "text-right mr-2"
                   : "text-left ml-2"
               }`}

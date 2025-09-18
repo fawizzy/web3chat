@@ -1,10 +1,10 @@
 import { gql, GraphQLClient } from 'graphql-request'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 
 export const useGetMessages = () => {
   const endpoint =
     'https://api.studio.thegraph.com/query/120721/web-3-chat/version/latest'
-  const graphQLClient = new GraphQLClient(endpoint)
+  const graphQLClient = useMemo(() => new GraphQLClient(endpoint), [endpoint])
 
 const getMessages = useCallback(
     async (from: string, to: string) => {
