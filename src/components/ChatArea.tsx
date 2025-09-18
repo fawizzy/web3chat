@@ -180,7 +180,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
                   : "text-left ml-2"
               }`}
             >
-              {new Date(Number(msg.timestamp)).toLocaleTimeString([], {
+              {new Date(Number(msg.timestamp)*1000).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
