@@ -23,7 +23,7 @@ const LandingPage = () => {
           abi: CHAT_ABI,
           address: import.meta.env.VITE_CHAT_CONTRACT,
           functionName: "users",
-          args: [data.account.address]
+          args: [data.account.address.toLowerCase() as `0x${string}`]
         }) as [string, string, boolean]; 
         console.log(user[2])
         setIsUser(user[2])
