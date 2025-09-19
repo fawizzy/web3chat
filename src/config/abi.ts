@@ -1,5 +1,41 @@
 export const CHAT_ABI =[
 	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "string",
+				"name": "group_id",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "message",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "GroupMessageSent",
+		"type": "event"
+	},
+	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -44,6 +80,24 @@ export const CHAT_ABI =[
 			}
 		],
 		"name": "register",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_group_id",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_message",
+				"type": "string"
+			}
+		],
+		"name": "sendGroupMessage",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -127,6 +181,29 @@ export const CHAT_ABI =[
 				"internalType": "struct UserRegistryMessaging.Message[]",
 				"name": "",
 				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getPrices",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "btc",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "eth",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "bnb",
+				"type": "int256"
 			}
 		],
 		"stateMutability": "view",

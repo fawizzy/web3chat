@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Smile, Paperclip, MoreVertical } from "lucide-react";
+import { Send, Smile, Paperclip } from "lucide-react";
 import { Friend, Message } from "../pages/ChatApp";
 import { usePublicClient, useWalletClient } from "wagmi";
 import { CHAT_ABI } from "../config/abi";
 import { toast } from "sonner";
 import { parseAbiItem } from "viem";
 import { useGetMessages } from "../hooks/useGetMessages";
+import { useGetGroupMessages } from "../hooks/useGetGoupMessages";
+import { formatPriceString } from "../lib/utils";
 
 interface ChatAreaProps {
   selectedFriend: Friend | null;
@@ -15,12 +17,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // Add ref for messages container
   const { data } = useWalletClient();
   const publicClient = usePublicClient();
-  const {getMessages} = useGetMessages()
+  const { getMessages } = useGetMessages();
+  const { getGroupMessages } = useGetGroupMessages();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll the messages container, not the whole page
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -31,25 +38,43 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     if (!selectedFriend || !publicClient) return;
     const fetchMessages = async () => {
       if (selectedFriend && publicClient) {
-        const msgs = await getMessages(data?.account.address as `0x${string}`, selectedFriend.user);
-        console.log("msg: ", msgs)
-        setMessages(msgs as Message[]);
+        if (selectedFriend.id == "global-group") {
+          const groupMessages = await getGroupMessages();
+          interface GroupMessage {
+            id: string;
+            from: string;
+            group_id: string;
+            message: string;
+            timestamp: string;
+          }
+          const mappedMessages = groupMessages.map((msg: GroupMessage) => ({
+            id: msg.id,
+            from: msg.from,
+            to: "", // or set to a relevant value if available
+            message: formatPriceString(msg.message),
+            timestamp: msg.timestamp,
+          }));
+          setMessages(mappedMessages);
+        } else {
+          const msgs = await getMessages(
+            data?.account.address as `0x${string}`,
+            selectedFriend.user
+          );
+          console.log("msg: ", msgs);
+          setMessages(msgs as Message[]);
+        }
       }
     };
     fetchMessages();
 
-
     const unwatch = publicClient.watchEvent({
-      // address: import.meta.env.VITE_CHAT_CONTRACT,
       event: parseAbiItem(
         "event MessageSent(address indexed from,address indexed to,string message,uint256 timestamp)"
       ),
       onLogs: () => {
         fetchMessages();
       },
-      // batch: false
     });
-
 
     return () => {
       unwatch();
@@ -85,10 +110,44 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     setMessage("");
   };
 
+  const handleSendGroupMessage = async () => {
+    if (!message.trim() || !selectedFriend || !data) return;
+
+    try {
+      await data.writeContract({
+        abi: CHAT_ABI,
+        address: import.meta.env.VITE_CHAT_CONTRACT,
+        functionName: "sendGroupMessage",
+        args: [selectedFriend.id, message],
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    }
+
+    const newMessage: Message = {
+      message: message,
+      from: data.account.address,
+      to: selectedFriend.user,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    setMessage("");
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (!selectedFriend) return
+      if (selectedFriend.id == "global-group") {
+        handleSendGroupMessage();
+      } else {
+        handleSendMessage();
+      }
     }
   };
 
@@ -110,48 +169,40 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
     );
   }
 
-  console.log(data?.account.address)
-
-
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Chat Header */}
-      <div className="bg-black/20 backdrop-blur-md border-b border-white/10 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <img
-                src={"https://ipfs.io/ipfs/" + selectedFriend.uri}
-                alt={selectedFriend.name}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">
-                {selectedFriend.name}
-              </h3>
-            </div>
+    <div className="flex flex-col h-full max-h-screen">
+      {/* Chat Header - Fixed at top */}
+      <div className="bg-black/20 backdrop-blur-md border-b border-white/10 p-4 flex-shrink-0">
+        <div className="flex items-center space-x-3">
+          <img
+            src={"https://ipfs.io/ipfs/" + selectedFriend.uri}
+            alt={selectedFriend.name}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+          <div>
+            <h3 className="text-white font-semibold">{selectedFriend.name}</h3>
           </div>
-          <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
-            <MoreVertical className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages Area - Scrollable */}
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 min-h-0"
+        style={{ scrollBehavior: 'smooth' }}
+      >
         {messages.map((msg, index) => (
           <div
             key={index}
             className={`flex ${
-               msg.from.toLowerCase() === data?.account.address.toLowerCase()
+              msg.from.toLowerCase() === data?.account.address.toLowerCase()
                 ? "justify-end"
                 : "justify-start"
             }`}
           >
             <div
               className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-                 msg.from.toLowerCase() === data?.account.address.toLowerCase()
+                msg.from.toLowerCase() === data?.account.address.toLowerCase()
                   ? "flex-row-reverse space-x-reverse"
                   : ""
               }`}
@@ -163,35 +214,42 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
                   className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                 />
               )}
-              <div
-                className={`px-4 py-2 rounded-2xl ${
-                  msg.from.toLowerCase() === data?.account.address.toLowerCase()
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
-                    : "bg-white/10 text-white"
-                }`}
-              >
-                <p className="text-sm">{msg.message}</p>
+              <div className="flex flex-col">
+                <div
+                  className={`px-4 py-2 rounded-2xl ${
+                    msg.from.toLowerCase() ===
+                    data?.account.address.toLowerCase()
+                      ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                      : "bg-white/10 text-white"
+                  }`}
+                >
+                  <p className="text-sm">{msg.message}</p>
+                </div>
+                <div
+                  className={`text-xs text-gray-400 mt-1 ${
+                    msg.from.toLowerCase() ===
+                    data?.account.address.toLowerCase()
+                      ? "text-right"
+                      : "text-left"
+                  }`}
+                >
+                  {new Date(Number(msg.timestamp) * 1000).toLocaleTimeString(
+                    [],
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  )}
+                </div>
               </div>
-            </div>
-            <div
-              className={`text-xs text-gray-400 mt-1 ${
-                msg.from.toLowerCase() === data?.account.address.toLowerCase()
-                  ? "text-right mr-2"
-                  : "text-left ml-2"
-              }`}
-            >
-              {new Date(Number(msg.timestamp)*1000).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="border-t border-white/10 p-4">
+      {/* Message Input - Fixed at bottom */}
+      <div className="border-t border-white/10 p-4 bg-black/10 backdrop-blur-md flex-shrink-0">
         <div className="flex items-center space-x-3">
           <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <Paperclip className="w-5 h-5" />
@@ -210,7 +268,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ selectedFriend }) => {
             </button>
           </div>
           <button
-            onClick={handleSendMessage}
+            onClick={
+              selectedFriend.id == "global-group"
+                ? handleSendGroupMessage
+                : handleSendMessage
+            }
             disabled={!message.trim()}
             className={`p-3 rounded-full transition-all ${
               message.trim()

@@ -41,8 +41,47 @@ const FriendsList: React.FC<FriendsListProps> = ({
         </div>
       </div>
 
+      
+
       {/* Friends List */}
       <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            Groups
+          </h3>
+        </div>
+        <div className="space-y-1 px-2">
+        
+            <div
+              onClick={() =>
+              onSelectFriend({
+                id: 'global-group',
+                user: 'global',
+                name: 'Global Group',
+                uri: 'bafkreibbxyru32bqngstefymwmsofiliz3qsxp4jeqmn22ptgyvafcd2zu', 
+              })
+              }
+              className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-white/10 ${
+              selectedFriend?.id === 'global-group'
+                ? 'bg-purple-600/20 border border-purple-500/30'
+                : ''
+              }`}
+            >
+              <div className="relative">
+              <img
+                src={"https://ipfs.io/ipfs/"+'bafkreibbxyru32bqngstefymwmsofiliz3qsxp4jeqmn22ptgyvafcd2zu'}
+                alt="Global Group"
+                className="w-12 h-12 rounded-full object-cover"
+              />
+              </div>
+              <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="font-medium text-white truncate">Global Group</h4>
+              </div>
+              </div>
+            </div>
+         
+        </div>
         <div className="p-4">
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
             Friends ({filteredFriends.length})
